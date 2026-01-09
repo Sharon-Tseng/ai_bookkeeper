@@ -1,4 +1,5 @@
 import json
+import os
 from langchain.tools import tool
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
@@ -16,15 +17,21 @@ def write_to_sheets(data_json: str, config: RunnableConfig) -> str:
     configurable = config.get("configurable", {})
     spreadsheet_id = configurable.get("SPREADSHEET_ID", None)
 
+    creds_str = os.getenv("GOOGLE_APP_CREDENTIALS", None)
+
     if not spreadsheet_id:
         return "SPREADSHEET_ID is not configured."
+    if not creds_str:
+        return "GOOGLE_APP_CREDENTIALS is not configured."
+    
     
     try:
-        # input credentials
-        creds = Credentials.from_service_account_file('credentials.json', scopes=SCOPES)
+        # parse json credentials
+        info = json.loads(creds_str)
+        info['private_key'] = info['private_key'].replace('\\n', '\n')
+        
+        creds = Credentials.from_service_account_info(info, scopes=SCOPES)
         service = build('sheets', 'v4', credentials=creds)
-
-        # Parse input data
         data = json.loads(data_json)
         values = [
             data.get("date",""), 
