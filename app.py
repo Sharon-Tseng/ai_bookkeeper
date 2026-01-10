@@ -41,6 +41,7 @@ def clear_all():
 
 @app.route('/view_history')
 def view_history():
+    
     return render_template('view_history.html')
 
 if __name__ == '__main__':

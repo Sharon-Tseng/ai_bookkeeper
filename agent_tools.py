@@ -55,3 +55,52 @@ def write_to_sheets(data_json: str, config: RunnableConfig) -> str:
     except Exception as e:
         return f"Error writing to Google Sheets: {str(e)}" 
     
+@tool("google_sheet_analyzer")
+def analyze_sheets(config: RunnableConfig) -> str:
+    """
+    讀取並分析 Google Sheets 中的消費數據，並生成消費報告以及提供省錢建議
+    """
+    configurable = config.get("configurable", {})
+    spreadsheet_id = configurable.get("SPREADSHEET_ID", None)
+    creds_str = os.getenv("GOOGLE_APP_CREDENTIALS", None)
+
+    if not spreadsheet_id:
+        return "SPREADSHEET_ID is not configured."
+    if not creds_str:
+        return "GOOGLE_APP_CREDENTIALS is not configured."
+    
+    try:
+        info = json.loads(creds_str)
+        info['private_key'] = info['private_key'].replace('\\n', '\n')
+        
+        creds = Credentials.from_service_account_info(info, scopes=SCOPES)
+        service = build('sheets', 'v4', credentials=creds)
+
+        # Read data from Google Sheets
+        result = service.spreadsheets().values().get(
+            spreadsheetId=spreadsheet_id,
+            range="Sheet1!A:E"
+        ).execute()
+        values = result.get('values', [])
+
+        if not values or len(values) < 2:
+            return "No data found in the spreadsheet."
+
+        # Summarize spending
+        summary = {}
+        for row in values:
+            if len(row) >= 2:
+                try:
+                    amount = float(str(row[0]).replace('$', '').replace(',', ''))
+                    category = row[1]
+                    summary[category] = summary.get(category, 0) + amount
+                except ValueError:
+                    continue
+        
+        report = "Monthly Spending Report:\n"
+        for cat, amt in summary.items():
+            report += f"- {cat}: ${amt:.2f}\n"
+        return report
+    
+    except Exception as e:
+        return f"Error analyzing Google Sheets: {str(e)}"
