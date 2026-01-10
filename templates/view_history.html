@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>AI Bookkeeper</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div id="sidebar" class="sidebar">
+        <a href = "javascript:void(0)" class="closebtn" onclick="toggleNav()">×</a>
+        <a href="/" style="color: white;" class="sidebar-item active"> Home </a>
+        <br><br>
+        <a href="/app" style="color: white;" class="sidebar-item active"> Add a record  </a>
+        <br><br>
+        <a href="/view_history" class="sidebar-item"> View history </a>
+    </div>
+
+    <div id="main">
+        <button class="openbtn" onclick="toggleNav()">☰ Menu</button>
+        <div class="main-content">
+            <h1>View History</h1>
+            <div class="box">
+                <h3>Your recent activity will be displayed here.</h3>
+                <p>This feature is coming soon!</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let sidebarOpen = true;
+        function toggleNav() {
+            if (sidebarOpen) {
+                document.getElementById("sidebar").style.width = "0";
+                document.getElementById("main").style.marginLeft= "0";
+                sidebarOpen = false;
+            } else {
+                document.getElementById("sidebar").style.width = "250px";
+                document.getElementById("main").style.marginLeft = "250px";
+                sidebarOpen = true;
+            }
+        }
+    </script>
+
+</body>
+</html>

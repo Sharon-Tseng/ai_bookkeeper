@@ -41,3 +41,6 @@ class AccountAgents:
 
         response = bookkeeper_graph_agent.invoke(inputs, config=config)
         return response["messages"][-1].content
+    
+    # @staticmethod
+    # def expense_analysis

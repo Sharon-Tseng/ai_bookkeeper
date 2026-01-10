@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<html>
+<head>
+    <title> AI Bookkeeper </title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div id="sidebar" class="sidebar">
+        <a href = "javascript:void(0)" class="closebtn" onclick="toggleNav()">×</a>
+        <a href="/" style="color: white;" class="sidebar-item active"> Home </a>
+        <br><br>
+        <a href="/app" style="color: white;" class="sidebar-item active"> Add a record  </a>
+        <br><br>
+        <a href="/view_history" class="sidebar-item"> View history </a>
+    </div>
+
+    <div id="main">
+        <button class="openbtn" onclick="toggleNav()">☰ Menu</button>
+        <div class="main-content">
+            <h1>Add a record</h1>
+                <div class="box">
+                    <h3>Step 1: Configuration</h3>
+                    <form id="upload-form" method="POST" enctype="multipart/form-data">
+                        <label>Google Sheet URL:</label>
+                        <input type="text" name="sheet_url" placeholder="Paste URL here..." required value="{{ sheet_url }}">
+                        <p><small>Service Email: <code>bookkeeper-agent@utopian-nimbus-482915-d0.iam.gserviceaccount.com</code></small></p>
+                        
+                        <hr>
+                        <h3>Step 2: Upload Receipt</h3>
+                        <input type="file" name="receipt" accept="image/*" required>
+                        <br><br>
+                        
+                        {% if not result %}
+                         <div class="button-container" style="margin-top: 15px;">
+                            <button type="submit" id="submit-button">🚀 Process </button>
+                            <button type="reset" id="clear-button"> Clear </button>
+                        </div>
+                        {% endif %}
+
+                        <div id="loading-container" style="display: none; margin-top: 15px;">
+                            <div class="loader"></div>
+                            <strong>Processing...</strong> 
+                        </div>
+            </form>
+        </div>
+
+        {% if result %}
+        <div class="box">
+            <h3>Result:</h3>
+            <div class="result">{{ result }}</div>
+            <div class="button-container" style="margin-top: 15px;">
+                <button type = "button" onclick="window.location.href='{{ sheet_url }}'">Open Google Sheet</button>
+                <button type = "button" onclick="window.location.href='/app'">Process Another Receipt</button>
+                <button type="button" onclick="window.location.href='/clear'"> 🗑️ Clear All </button>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <script>
+        let sidebarOpen = true;
+        function toggleNav() {
+            if (sidebarOpen) {
+                document.getElementById("sidebar").style.width = "0";
+                document.getElementById("main").style.marginLeft= "0";
+                sidebarOpen = false;
+            } else {
+                document.getElementById("sidebar").style.width = "250px";
+                document.getElementById("main").style.marginLeft = "250px";
+                sidebarOpen = true;
+            }
+        }
+
+        document.getElementById('upload-form').onsubmit = function() {
+            document.getElementById('submit-button').style.display = 'none';
+            document.getElementById('clear-button').style.display = 'none';
+            document.getElementById('loading-container').style.display = 'block';
+        };
+    </script>
+
+</body>
+</html>
