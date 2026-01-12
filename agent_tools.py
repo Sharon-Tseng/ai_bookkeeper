@@ -56,7 +56,7 @@ def write_to_sheets(data_json: str, config: RunnableConfig) -> str:
         return f"Error writing to Google Sheets: {str(e)}" 
     
 @tool("google_sheet_analyzer")
-def analyze_sheets(config: RunnableConfig) -> str:
+def analyze_expenses(config: RunnableConfig) -> str:
     """
     讀取並分析 Google Sheets 中的消費數據，並生成消費報告以及提供省錢建議
     """

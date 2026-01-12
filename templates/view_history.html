@@ -20,9 +20,28 @@
             <h1>View History</h1>
             <div class="box">
                 <h3>Your recent activity will be displayed here.</h3>
-                <p>This feature is coming soon!</p>
+                <form id="upload-form" method="POST" enctype="multipart/form-data">
+                        <label>Google Sheet URL:</label>
+                        <input type="text" name="sheet_url" placeholder="Paste URL here..." required value="{{ sheet_url }}">
+                        <p><small>Service Email: <code>bookkeeper-agent@utopian-nimbus-482915-d0.iam.gserviceaccount.com</code></small></p>
+                </form>
+                <div class="button-container" style="margin-top: 15px;">
+                    <button type="submit" form="upload-form"> History </button>
+                    <button type="button" onclick="window.location.href='{{ sheet_url }}'">Open Google Sheet</button>
             </div>
         </div>
+        {% if history %}
+        <div class="box">
+            <h3>History:</h3>
+            <div class="result">
+                <ul>
+                {% for entry in history %}
+                    <li>{{ entry }}</li>
+                {% endfor %}
+                </ul>
+            </div>
+        </div>
+        {% endif %}
     </div>
 
     <script>
