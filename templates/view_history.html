@@ -11,7 +11,7 @@
         <br><br>
         <a href="/app" style="color: white;" class="sidebar-item active"> Add a record  </a>
         <br><br>
-        <a href="/view_history" class="sidebar-item"> View history </a>
+        <a href="/view_history" style="color: white;" class="sidebar-item active"> View history </a>
     </div>
 
     <div id="main">
@@ -20,28 +20,30 @@
             <h1>View History</h1>
             <div class="box">
                 <h3>Your recent activity will be displayed here.</h3>
-                <form id="upload-form" method="POST" enctype="multipart/form-data">
+                <form id="upload-form" method="POST" action="/view_history" enctype="multipart/form-data">
                         <label>Google Sheet URL:</label>
                         <input type="text" name="sheet_url" placeholder="Paste URL here..." required value="{{ sheet_url }}">
                         <p><small>Service Email: <code>bookkeeper-agent@utopian-nimbus-482915-d0.iam.gserviceaccount.com</code></small></p>
-                </form>
-                <div class="button-container" style="margin-top: 15px;">
-                    <button type="submit" form="upload-form"> History </button>
-                    <button type="button" onclick="window.location.href='{{ sheet_url }}'">Open Google Sheet</button>
-            </div>
+                        
+                        <div class="button-container" style="margin-top: 15px;">
+                            <button type="submit" form="upload-form"> History </button>
+                            <button type="button" onclick="window.location.href='{{ sheet_url }}'">Open Google Sheet</button>
+                        </div>
+                    </form>
         </div>
         {% if history %}
         <div class="box">
-            <h3>History:</h3>
-            <div class="result">
-                <ul>
-                {% for entry in history %}
-                    <li>{{ entry }}</li>
+            <h3>Select Month(s) to Display:</h3>
+            <select id = "monthSelector" multiple style="width: 200px; height: 100px;">
+                {% for month in history.keys() %}
+                <option value="{{ month }}">{{ month }}</option>
                 {% endfor %}
-                </ul>
-            </div>
+            </select>
+            <canvas id="SpendingChart" width="400" height="200"></canvas>
+            <button id="updateChart"> Update Chart </button>
         </div>
         {% endif %}
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     </div>
 
     <script>
@@ -58,6 +60,70 @@
             }
         }
     </script>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const monthData = `{{ history | tojson | safe }}`;
+        let dataObj = {};
+
+        try {
+            dataObj = JSON.parse(monthData);
+        } catch(e) {
+            console.error("Failed to parse JSON:", e);
+             return;
+        }
+
+        const canvas = document.getElementById('SpendingChart');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        let chart;
+
+        function updateChart() {
+            const select = document.getElementById('monthSelector');
+            const selectedMonths = Array.from(select.selectedOptions).map(opt => opt.value);
+
+            const combinedData = {};
+            selectedMonths.forEach(month => {
+                const monthData = dataObj[month];
+                if (!monthData) return;
+                for (const [cat, amt] of Object.entries(monthData)) {
+                    combinedData[cat] = (combinedData[cat] || 0) + amt;
+                }
+            });
+
+        const categories = Object.keys(combinedData);
+        const amounts = Object.values(combinedData);
+
+        if (chart) chart.destroy(); 
+
+        chart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: categories,
+                datasets: [{
+                    label: `Spending (SGD) - ${selectedMonths.join(', ')}`,
+                    data: amounts,
+                    backgroundColor: 'rgba(75, 192, 192, 0.5)',
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                scales: { y: { beginAtZero: true } }
+            }
+        });
+    }
+
+    const monthSelector = document.getElementById('monthSelector');
+    if (monthSelector.options.length > 0) {
+        monthSelector.options[monthSelector.options.length - 1].selected = true;
+    }
+    updateChart();
+    document.getElementById('updateChart').addEventListener('click', updateChart);
+});
+</script>
 
 </body>
 </html>

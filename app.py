@@ -1,7 +1,7 @@
-from flask import Flask, render_template, request, redirect, url_for
-import io
+from flask import Flask, json, render_template, request, redirect, url_for
 import PIL.Image as Image
 import re
+from agent_tools import load_raw_expense_data
 from agents import AccountAgents
 
 def get_spreadsheet_id(url):
@@ -41,20 +41,26 @@ def clear_all():
 
 @app.route('/view_history', methods=['GET', 'POST'])
 def view_history():
-    result = None
-    sheet_url = ""
     if request.method == 'POST':
         sheet_url = request.form.get('sheet_url')
-        spreadsheet_id = get_spreadsheet_id(sheet_url)
-        if spreadsheet_id:
-            try:
-                result = AccountAgents.analyze_expenses(spreadsheet_id)
-            except Exception as e:
-                result = f"Error: {str(e)}"
-        else:
-            result = "Error: Invalid URL."
+    else:
+        sheet_url = request.args.get('sheet_url', '')
 
-    return render_template('view_history.html',result=result, sheet_url=sheet_url)
+    if not sheet_url:
+        return render_template('view_history.html', history = {}, sheet_url="")
+
+    spreadsheet_id = get_spreadsheet_id(sheet_url)
+    if not spreadsheet_id:
+        return "Error: Invalid Google Sheet URL."
+
+    raw_data = load_raw_expense_data(spreadsheet_id)
+
+    # Get monthly data for chart
+    months = raw_data.get("months", [])
+    data = raw_data.get("data", {})
+
+    # Transform data to JSON format for charting
+    return render_template('view_history.html',history= data, sheet_url=sheet_url)
 
 @app.route('/clear_history')
 def clear_history():

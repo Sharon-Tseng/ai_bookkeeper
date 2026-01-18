@@ -78,7 +78,7 @@ button {
     left: 0;
     background-color: #97b6d4;
     overflow-x: hidden;
-    transition: 0.5s; 
+    transition: 0.3s; 
     padding-top: 100px;
 }
 
@@ -93,7 +93,10 @@ button {
     font-size: 18px;
     color: white;
     display: block;
-    transition: 0.3s;
+    transition: 0.2s;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .sidebar a:hover {
