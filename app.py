@@ -45,7 +45,7 @@ def get_user_sheets(username):
     db_path = '/tmp/bookkeeper.db' if os.environ.get('VERCEL') else 'bookkeeper.db'
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
-    cursor.execute('SELECT sheet_url FROM user_sheets WHERE username = ?', (username,))
+    cursor.execute('SELECT DISTINCT sheet_url FROM user_sheets WHERE username = ?', (username,))
     urls = [row[0] for row in cursor.fetchall()]
     conn.close()
     return urls
