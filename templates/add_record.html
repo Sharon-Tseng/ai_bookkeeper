@@ -99,9 +99,26 @@
         }
 
         document.getElementById('upload-form').onsubmit = function() {
+            // 1. Show loading UI
             document.getElementById('submit-button').style.display = 'none';
             document.getElementById('clear-button').style.display = 'none';
             document.getElementById('loading-container').style.display = 'block';
+
+            // 2. Save to localStorage
+            let url = document.getElementById('sheet_url_input').value;
+            if (url) {
+                let saved = JSON.parse(localStorage.getItem('saved_sheets') || '[]');
+                if (!saved.includes(url)) {
+                    saved.push(url);
+                    localStorage.setItem('saved_sheets', JSON.stringify(saved));
+                }
+            }
+        };
+
+        // Load saved URLs on page load
+        window.onload = function() {
+            let saved = JSON.parse(localStorage.getItem('saved_sheets') || '[]');
+            let container = document.getElementById('saved-sheets-container');
         };
     </script>
 
