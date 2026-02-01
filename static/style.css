@@ -1,77 +1,149 @@
+/* =========================================
+   1. GLOBAL STYLES & LAYOUT RESET
+   ========================================= */
 body { 
     margin: 0;
     padding: 0;
-    background-color: #f0f2f5;
-    display: flex;
-    justify-content: center;
-}
-
-/* Main container*/
-.box { 
-  border: 1px solid #ccc; 
-  padding: 15px; 
-  border-radius: 12px; 
-  margin-bottom: 20px; 
-  max-width: 400px;
-  width: 90%;
-  margin: 20px auto;
-  background: white;
-  box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-  word-wrap: break-word;
-}
-
-input[type="text"], input[type="file"], button {
-    width: 100%;
-    max-width: 100%;
-    box-sizing: border-box;
-    margin-bottom: 10px;
+    background-color: white !important;
+    font-family: sans-serif; /* Recommended for a cleaner look */
 }
 
 #main {
-    width: 100%;
-    max-width: 480px; 
-    min-height: 100vh;
-    margin-left: 0 !important;
+    margin-left: 0 !important; 
+    padding: 20px;
     padding-top: 10px;
+    width: 100%;
+    box-sizing: border-box;
+    display: block !important;
     background-color: white;
-    box-shadow: 0 0 20px rgba(0,0,0,0.1);
 }
 
-input[type="text"], input[type="file"] { width: 100%; margin: 10px 0; padding: 10px; }
+/* =========================================
+   2. TOP NAVIGATION (ROLL-DOWN MENU)
+   ========================================= */
+.top-nav {
+    width: 100%;
+    background-color: #a3b8d3; 
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+
+.nav-header {
+    display: flex;
+    justify-content: center; /* Centers the Menu button */
+    padding: 10px;
+}
+
+.menu-toggle {
+    background: none;
+    border: 1px solid white;
+    color: white;
+    padding: 10px 25px;
+    cursor: pointer;
+    font-size: 18px;
+    border-radius: 8px;
+    min-height: 48px;
+    width: auto;
+}
+
+.nav-links {
+    display: none; /* Hidden until 'active' class is added */
+    flex-direction: column;
+    background-color: #f8f9fa;
+    width: 100%;
+    border-bottom: 2px solid #ddd;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+
+.nav-links.active {
+    display: flex; /* Triggered by toggleMenu() script */
+}
+
+/* Navigation Link Items */
+.nav-item {
+    padding: 18px;
+    text-align: center;
+    text-decoration: none;
+    color: #333;
+    border-top: 1px solid #eee;
+    transition: 0.2s;
+    display: block;
+}
+
+.nav-item:hover {
+    background-color: rgba(0, 0, 0, 0.05); 
+    font-size: 22px;                                     
+}
+
+/* =========================================
+   3. BOXES & CONTAINERS
+   ========================================= */
+.box { 
+    border: 1px solid #ccc; 
+    padding: 15px; 
+    border-radius: 12px; 
+    margin: 20px auto;
+    max-width: 400px;
+    width: 90%;
+    background: white;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    word-wrap: break-word;
+}
+
+.result { 
+    background: #f4f4f4; 
+    padding: 15px; 
+    border-left: 5px solid #007bff; 
+    white-space: pre-wrap; 
+}
+
+/* =========================================
+   4. FORMS & BUTTONS
+   ========================================= */
+input[type="text"], 
+input[type="file"] { 
+    width: 100%; 
+    margin: 10px 0; 
+    padding: 10px; 
+    box-sizing: border-box;
+}
 
 button { 
-  background: #549ae6; 
-  color: white; 
-  border: none; 
-  padding: 10px 20px; 
-  cursor: pointer; 
-  border-radius: 5px; 
+    background: #549ae6; 
+    color: white; 
+    border: none; 
+    padding: 10px 20px; 
+    cursor: pointer; 
+    border-radius: 5px; 
+    width: 100%;
+    min-height: 44px;
+    transition: 0.3s;
 }
 
-.result { background: #f4f4f4; 
-  padding: 15px; 
-  border-left: 5px solid #007bff; 
-  white-space: pre-wrap; 
+.button-container {
+    display: flex;
+    gap: 20px;
+    align-items: center;
 }
 
-/* Spinning loader */
-.loader {
-  border: 8px solid #f3f3f3; 
-  border-top: 8px solid #007bff; 
-  border-radius: 50%;
-  width: 50px;
-  height: 50px;
-  animation: spin 1s linear infinite;
-  margin: 20px auto;
+#submit-button, 
+#clear-button {
+    background-color: #007bff;
+    color: white;
+    min-width: 120px;   
 }
 
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+#submit-button:hover, 
+#clear-button:hover {
+    background-color: #5a6268;
 }
 
-#loading-container{
-    display:none;
+/* =========================================
+   5. LOADING & ANIMATIONS
+   ========================================= */
+#loading-container {
+    display: none;
     margin-top: 20px;
     padding: 15px;
     background: #e9f7fe;
@@ -79,92 +151,24 @@ button {
     color: #31708f;
 }
 
-/* Top-nav styling */
-.top-nav {
-    height: 100%;
-    width: 100%; 
-    position: fixed;
-    z-index: 1000;
-    top: 0;
-    left: 0;
-    background-color: #97b6d4;
-    overflow-x: hidden;
-    transition: 0.3s; 
-    padding-top: 100px;
+.loader {
+    border: 8px solid #f3f3f3; 
+    border-top: 8px solid #007bff; 
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    animation: spin 1s linear infinite;
+    margin: 20px auto;
 }
 
-button {
-    min-height: 44px; 
-    width: 100%;     
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
 }
 
-/* Top-nav links */
-.top-nav a, .top-nav .nav-item, .top-nav h2{
-    text-align:center;
-    display: block;
-    font-weight: bold;
-    font-size: 20px;
-    padding: 10px 15px;
-    text-decoration: none;
-    font-size: 18px;
-    color: white;
-    display: block;
-    transition: 0.2s;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.nav-header{
-    display: flex;
-    justify-content: center;
-    padding: 10px;
-    background-color: #a3b8d3;
-}
-
-.nav-links{
-    display:none;
-    flex-direction: column; 
-    width: 100%;
-    background-color: #f0f2f5;
-    border-bottom: 2px solid #ddd;
-}
-
-.nav-links.active{
-    display: flex;
-}
-
-.top-nav a:hover {
-    background-color: rgba(255, 255, 255, 0.2); 
-    font-size: 22px;                           
-}
-
-/* Close button */
-.closebtn {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    font-size: 36px;
-    margin: 16px;
-    cursor: pointer;
-}
-
-/* Open button */
-.openbtn {
-    font-size: 20px;
-    cursor: pointer;
-    background-color: #97b6d4;
-    color: white;
-    padding: 10px 15px;
-    border: none;
-    border-radius: 5px;
-}
-
-.openbtn:hover {
-    background-color: #34495e;
-}
-
-/* Welcome page */
+/* =========================================
+   6. WELCOME PAGE STYLES
+   ========================================= */
 .welcome-page {
     background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
     height: 100vh;
@@ -199,27 +203,35 @@ button {
     background-color: #27ae60;
 }
 
-.button-container {
-    display: flex;
-    gap: 20px;
-    align-items: center;
-}
-
-#submit-button, #clear-button {
-    min-width: 120px;   
-    padding: 10px 20px;  
+/* =========================================
+   7. LEGACY / UTILITY (Can be removed if not used)
+   ========================================= */
+.closebtn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    font-size: 36px;
     cursor: pointer;
-    border-radius: 5px;
-    border: none;
-    font-size: 16px;
-    transition: 0.3s;
 }
 
-#submit-button:hover, #clear-button:hover{
-    background-color: #5a6268;
+.openbtn {
+    display: none; /* Hidden to clean up the right side */
 }
 
-#submit-button,#clear-button {
-    background-color: #007bff;
-    color: white;
+/* =========================================
+   MOBILE RESPONSIVENESS FIX
+   ========================================= */
+@media (max-width: 480px) {
+    #main {
+        padding: 15px; /* Less padding on small phones to save space */
+    }
+    
+    .box {
+        width: 95%; /* Use more width on small phones */
+        margin: 10px auto;
+    }
+
+    h1 {
+        font-size: 24px; /* Smaller title text for phones */
+    }
 }
