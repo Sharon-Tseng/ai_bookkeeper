@@ -11,17 +11,20 @@
     <meta name="mobile-web-app-capable" content="yes">
 </head>
 <body>
-    <div id="sidebar" class="sidebar">
-        <a href = "javascript:void(0)" class="closebtn" onclick="toggleNav()">×</a>
-        <a href="/" style="color: white;" class="sidebar-item active"> Home </a>
-        <br><br>
-        <a href="/app" style="color: white;" class="sidebar-item active"> Add a record  </a>
-        <br><br>
-        <a href="/view_history" style="color: white;" class="sidebar-item active"> View history </a>
-    </div>
+    <nav class="top-nav">
+        <div class="nav-header">
+            <span class="brand">AI Bookkeeper</span>
+            <button class="menu-toggle" onclick="toggleMenu()">☰</button>
+        </div>
+        <div id="nav-links" class="nav-links">
+            <a href="/" class="nav-item">Home</a>
+            <a href="/app" class="nav-item">Add a Record</a>
+            <a href="/view_history" class="nav-item">View History</a>
+        </div>
+    </nav>
 
     <div id="main">
-        <button class="openbtn" onclick="toggleNav()">☰ Menu</button>
+        <button class="openbtn" onclick="toggleMenu()">☰ Menu</button>
         <div class="main-content">
             <h1>View History</h1>
             <div class="box">
@@ -96,18 +99,19 @@
     </div>
 
     <script>
-        let sidebarOpen = true;
-        function toggleNav() {
-            if (sidebarOpen) {
-                document.getElementById("sidebar").style.width = "0";
-                document.getElementById("main").style.marginLeft= "0";
-                sidebarOpen = false;
+        function toggleMenu() {
+            const navLinks = document.getElementById("nav-links");
+            if (navLinks.classList.contains("active")) {
+                navLinks.classList.remove("active");
             } else {
-                document.getElementById("sidebar").style.width = "250px";
-                document.getElementById("main").style.marginLeft = "250px";
-                sidebarOpen = true;
+                navLinks.classList.add("active");
             }
         }
+        document.querySelectorAll('.nav-item').forEach(link => {
+            link.addEventListener('click', () => {
+                document.getElementById("nav-links").classList.remove("active");
+            });
+        });
     </script>
 
     <script>
@@ -214,6 +218,7 @@
     }
 }
 </script>
+
 
 </body>
 </html>

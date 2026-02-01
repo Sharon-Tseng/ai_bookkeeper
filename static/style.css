@@ -31,6 +31,8 @@ input[type="text"], input[type="file"], button {
     width: 100%;
     max-width: 480px; 
     min-height: 100vh;
+    margin-left: 0 !important;
+    padding-top: 10px;
     background-color: white;
     box-shadow: 0 0 20px rgba(0,0,0,0.1);
 }
@@ -77,8 +79,8 @@ button {
     color: #31708f;
 }
 
-/* Sidebar styling */
-.sidebar {
+/* Top-nav styling */
+.top-nav {
     height: 100%;
     width: 0; 
     position: fixed;
@@ -96,8 +98,8 @@ button {
     width: 100%;     
 }
 
-/* Sidebar links */
-.sidebar a, .sidebar .sidebar-item, .sidebar h2{
+/* Top-nav links */
+.top-nav a, .top-nav .nav-item, .top-nav h2{
     text-align:center;
     display: block;
     font-weight: bold;
@@ -113,7 +115,7 @@ button {
     text-overflow: ellipsis;
 }
 
-.sidebar a:hover {
+.top-nav a:hover {
     background-color: rgba(255, 255, 255, 0.2); 
     font-size: 22px;                           
 }
