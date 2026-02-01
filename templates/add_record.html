@@ -12,17 +12,20 @@
     <meta name="mobile-web-app-capable" content="yes">
 </head>
 <body>
-    <div id="sidebar" class="sidebar">
-        <a href = "javascript:void(0)" class="closebtn" onclick="toggleNav()">×</a>
-        <a href="/" style="color: white;" class="sidebar-item active"> Home </a>
-        <br><br>
-        <a href="/app" style="color: white;" class="sidebar-item active"> Add a record  </a>
-        <br><br>
-        <a href="/view_history" class="sidebar-item"> View history </a>
-    </div>
+    <nav class="top-nav">
+        <div class="nav-header">
+            <span class="brand">AI Bookkeeper</span>
+            <button class="menu-toggle" onclick="toggleMenu()">☰</button>
+        </div>
+        <div id="nav-links" class="nav-links">
+            <a href="/" class="nav-item">Home</a>
+            <a href="/app" class="nav-item">Add a Record</a>
+            <a href="/view_history" class="nav-item">View History</a>
+        </div>
+    </nav>
 
     <div id="main">
-        <button class="openbtn" onclick="toggleNav()">☰ Menu</button>
+        <button class="openbtn" onclick="toggleMenu()">☰ Menu</button>
         <div class="main-content">
             <h1>Add a record</h1>
                 <div class="box">
@@ -86,16 +89,9 @@
 
     <script>
         let sidebarOpen = true;
-        function toggleNav() {
-            if (sidebarOpen) {
-                document.getElementById("sidebar").style.width = "0";
-                document.getElementById("main").style.marginLeft= "0";
-                sidebarOpen = false;
-            } else {
-                document.getElementById("sidebar").style.width = "250px";
-                document.getElementById("main").style.marginLeft = "250px";
-                sidebarOpen = true;
-            }
+        function toggleMenu() {
+            const navLinks = document.getElementById("nav-links");
+            navLinks.classList.toggle("active");
         }
 
         document.getElementById('upload-form').onsubmit = function() {

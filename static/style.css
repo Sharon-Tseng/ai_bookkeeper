@@ -82,9 +82,9 @@ button {
 /* Top-nav styling */
 .top-nav {
     height: 100%;
-    width: 0; 
+    width: 100%; 
     position: fixed;
-    z-index: 1;
+    z-index: 1000;
     top: 0;
     left: 0;
     background-color: #97b6d4;
@@ -113,6 +113,25 @@ button {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+.nav-header{
+    display: flex;
+    justify-content: center;
+    padding: 10px;
+    background-color: #a3b8d3;
+}
+
+.nav-links{
+    display:none;
+    flex-direction: column; 
+    width: 100%;
+    background-color: #f0f2f5;
+    border-bottom: 2px solid #ddd;
+}
+
+.nav-links.active{
+    display: flex;
 }
 
 .top-nav a:hover {
