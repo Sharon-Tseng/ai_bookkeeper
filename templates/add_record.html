@@ -21,9 +21,29 @@
             <h1>Add a record</h1>
                 <div class="box">
                     <h3>Step 1: Configuration</h3>
+
+                    {% if saved_sheets %}
+                    <div style="margin-bottom: 20px; padding: 12px; background-color: #f0f7ff; border-radius: 8px; border: 1px solid #d0e3ff;">
+                        <h4 style="margin-top: 0; color: #0056b3; font-size: 0.9em;">Quick Select Saved Sheet:</h4>
+                        <div style="max-height: 120px; overflow-y: auto;">
+                            {% for url in saved_sheets %}
+                            <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                                <input type="radio" name="saved_selector" id="sheet_{{ loop.index }}" 
+                                    onclick="document.getElementById('sheet_url_input').value='{{ url }}'"
+                                    {% if sheet_url == url %}checked{% endif %}>
+                                <label for="sheet_{{ loop.index }}" style="font-size: 13px; margin-left: 8px; cursor: pointer; color: #444; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                    📄 {{ url[:70] }}...
+                                </label>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div style="text-align: center; margin-bottom: 15px; color: #888; font-size: 0.8em;">— OR —</div>
+                    {% endif %}
+
                     <form id="upload-form" method="POST" enctype="multipart/form-data">
                         <label>Google Sheet URL:</label>
-                        <input type="text" name="sheet_url" placeholder="Paste URL here..." required value="{{ sheet_url }}">
+                        <input type="text" name="sheet_url" id="sheet_url_input" placeholder="Paste URL here..." required value="{{ sheet_url }}">
                         <p><small>Service Email: <code>bookkeeper-agent@utopian-nimbus-482915-d0.iam.gserviceaccount.com</code></small></p>
                         
                         <hr>
