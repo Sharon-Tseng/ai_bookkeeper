@@ -33,8 +33,12 @@
         </div>
         {% if history %}
         <div class="box">
+            <h3>Total Spending for Selected Month(s):</h3>
+            <p id="totalSpending" style="font-size: 18px; font-weight: bold;">$0.00</p>
+        </div>
+        <div class="box">
             <h3>Select Month(s) to Display:</h3>
-            <select id = "monthSelector" multiple style="width: 200px; height: 100px;">
+            <select id="monthSelector" multiple style="width: 200px; height: 100px;">
                 {% for month in history.keys() %}
                 <option value="{{ month }}">{{ month }}</option>
                 {% endfor %}
@@ -80,6 +84,7 @@
              return;
         }
 
+        const totalSpendingElement = document.getElementById('totalSpending');
         const canvas = document.getElementById('SpendingChart');
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
@@ -90,45 +95,49 @@
             const selectedMonths = Array.from(select.selectedOptions).map(opt => opt.value);
 
             const combinedData = {};
+            let totalSpending = 0;
             selectedMonths.forEach(month => {
                 const monthData = dataObj[month];
                 if (!monthData) return;
                 for (const [cat, amt] of Object.entries(monthData)) {
                     combinedData[cat] = (combinedData[cat] || 0) + amt;
+                    totalSpending += amt;
                 }
             });
 
-        const categories = Object.keys(combinedData);
-        const amounts = Object.values(combinedData);
+            totalSpendingElement.textContent = `$${totalSpending.toFixed(2)}`;
 
-        if (chart) chart.destroy(); 
+            const categories = Object.keys(combinedData);
+            const amounts = Object.values(combinedData);
 
-        chart = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: categories,
-                datasets: [{
-                    label: `Spending (SGD) - ${selectedMonths.join(', ')}`,
-                    data: amounts,
-                    backgroundColor: 'rgba(75, 192, 192, 0.5)',
-                    borderColor: 'rgba(75, 192, 192, 1)',
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: true,
-                scales: { y: { beginAtZero: true } }
-            }
-        });
-    }
+            if (chart) chart.destroy(); 
 
-    const monthSelector = document.getElementById('monthSelector');
-    if (monthSelector.options.length > 0) {
-        monthSelector.options[monthSelector.options.length - 1].selected = true;
-    }
-    updateChart();
-    document.getElementById('updateChart').addEventListener('click', updateChart);
+            chart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: categories,
+                    datasets: [{
+                        label: `Spending (SGD) - ${selectedMonths.join(', ')}`,
+                        data: amounts,
+                        backgroundColor: 'rgba(75, 192, 192, 0.5)',
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    scales: { y: { beginAtZero: true } }
+                }
+            });
+        }
+
+        const monthSelector = document.getElementById('monthSelector');
+        if (monthSelector.options.length > 0) {
+            monthSelector.options[monthSelector.options.length - 1].selected = true;
+        }
+        updateChart();
+        document.getElementById('updateChart').addEventListener('click', updateChart);
 });
 
 </script>
