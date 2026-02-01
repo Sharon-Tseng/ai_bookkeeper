@@ -5,7 +5,7 @@ body {
     margin: 0;
     padding: 0;
     background-color: white !important;
-    font-family: sans-serif; /* Recommended for a cleaner look */
+    font-family: sans-serif; 
 }
 
 #main {
@@ -31,7 +31,7 @@ body {
 
 .nav-header {
     display: flex;
-    justify-content: center; /* Centers the Menu button */
+    justify-content: center; 
     padding: 10px;
 }
 
@@ -216,22 +216,4 @@ button {
 
 .openbtn {
     display: none; /* Hidden to clean up the right side */
-}
-
-/* =========================================
-   MOBILE RESPONSIVENESS FIX
-   ========================================= */
-@media (max-width: 480px) {
-    #main {
-        padding: 15px; /* Less padding on small phones to save space */
-    }
-    
-    .box {
-        width: 95%; /* Use more width on small phones */
-        margin: 10px auto;
-    }
-
-    h1 {
-        font-size: 24px; /* Smaller title text for phones */
-    }
 }
