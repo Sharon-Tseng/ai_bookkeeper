@@ -1,3 +1,4 @@
+import os
 from flask import Flask, json, render_template, request, redirect, url_for
 import PIL.Image as Image
 import re
@@ -11,7 +12,8 @@ def get_spreadsheet_id(url):
     return match.group(1) if match else None
 
 def init_db():
-    conn = sqlite3.connect('bookkeeper.db')
+    db_path = '/tmp/bookkeeper.db' if os.environ.get('VERCEL') else 'bookkeeper.db'
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     # Store user-sheet relationships
     cursor.execute('''
@@ -26,7 +28,8 @@ def init_db():
 init_db()
 
 def save_user_sheet(username, sheet_url):
-    conn = sqlite3.connect('bookkeeper.db')
+    db_path = '/tmp/bookkeeper.db' if os.environ.get('VERCEL') else 'bookkeeper.db'
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     try:
         cursor.execute('''
@@ -39,7 +42,8 @@ def save_user_sheet(username, sheet_url):
     conn.close()
 
 def get_user_sheets(username):
-    conn = sqlite3.connect('bookkeeper.db')
+    db_path = '/tmp/bookkeeper.db' if os.environ.get('VERCEL') else 'bookkeeper.db'
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     cursor.execute('SELECT sheet_url FROM user_sheets WHERE username = ?', (username,))
     urls = [row[0] for row in cursor.fetchall()]
