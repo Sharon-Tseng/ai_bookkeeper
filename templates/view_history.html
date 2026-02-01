@@ -27,7 +27,7 @@
                         
                         <div class="button-container" style="margin-top: 15px;">
                             <button type="submit" form="upload-form"> History </button>
-                            <button type="button" onclick="window.location.href='{{ sheet_url }}'">Open Google Sheet</button>
+                            <button type="button" onclick="openSheet()">Open Google Sheet</button>
                         </div>
                     </form>
         </div>
@@ -43,6 +43,13 @@
             <button id="updateChart"> Update Chart </button>
         </div>
         {% endif %}
+        {% if total_trend %}
+        <div class="box">
+            <h3>Total Spending Trend</h3>
+            <canvas id="TotalTrendChart" width="400" height="200"></canvas>
+        </div>
+        {% endif %}
+
         <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     </div>
 
@@ -123,6 +130,24 @@
     updateChart();
     document.getElementById('updateChart').addEventListener('click', updateChart);
 });
+
+</script>
+
+<script>
+    function openSheet() {
+    const inputField = document.querySelector('input[name="sheet_url"]');
+    let url = inputField ? inputField.value.trim() : "";
+    
+    if (url && url !== "") {
+        if (!url.startsWith('http')) {
+            url = 'https://' + url;
+        }
+        console.log("Opening URL:", url); 
+        window.open(url, '_blank'); 
+    } else {
+        alert("Please enter a Google Sheet URL first!");
+    }
+}
 </script>
 
 </body>

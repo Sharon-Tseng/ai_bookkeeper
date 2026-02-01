@@ -102,8 +102,8 @@ def analyze_expenses(config: RunnableConfig) -> str:
     Monthly Spending Report (YYYY-MM):
     - 類別1: $金額
     - 類別2: $金額
+    總消費: $金額
     """
-    ...
     spreadsheet_id = config.get("configurable", {}).get("SPREADSHEET_ID")
     raw_data = load_raw_expense_data(spreadsheet_id)
 
@@ -117,9 +117,12 @@ def analyze_expenses(config: RunnableConfig) -> str:
     latest_month = months[-1]
     month_data = raw_data["data"].get(latest_month, {})
 
+    total_spending = sum(month_data.values())
+
     report = f"Monthly Spending Report ({latest_month}):\n"
     for cat, amt in month_data.items():
         report += f"- {cat}: ${amt:.2f}\n"
+    report += f"Total Spending: ${total_spending:.2f}\n"
 
     return report
     

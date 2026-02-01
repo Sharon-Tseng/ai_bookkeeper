@@ -47,7 +47,7 @@ def view_history():
         sheet_url = request.args.get('sheet_url', '')
 
     if not sheet_url:
-        return render_template('view_history.html', history = {}, sheet_url="")
+        return render_template('view_history.html', history={}, sheet_url="")
 
     spreadsheet_id = get_spreadsheet_id(sheet_url)
     if not spreadsheet_id:
@@ -59,8 +59,11 @@ def view_history():
     months = raw_data.get("months", [])
     data = raw_data.get("data", {})
 
+    # Calculate total spending trend
+    total_trend = {month: sum(categories.values()) for month, categories in data.items()}
+
     # Transform data to JSON format for charting
-    return render_template('view_history.html',history= data, sheet_url=sheet_url)
+    return render_template('view_history.html', history=data, sheet_url=sheet_url, total_trend=total_trend)
 
 @app.route('/clear_history')
 def clear_history():
