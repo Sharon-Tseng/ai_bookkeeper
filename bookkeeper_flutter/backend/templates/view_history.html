@@ -45,6 +45,22 @@
                 <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
                 {% endif %}
 
+                {% if view_history %}
+                <div class="box">
+                    <h3>View History Items</h3>
+                    <ul style="list-style-type: none; padding-left: 0;">
+                        {% for item in view_history %}
+                        <li style="margin-bottom: 8px;">
+                            <span style="font-weight: bold;">{{ item.date }}</span>: 
+                            <span>{{ item.description }}</span> - 
+                            <span style="color: green;">${{ item.amount }}</span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+                {% endif %}
+
                 <form id="upload-form" method="POST" action="/view_history" enctype="multipart/form-data">
                         <label>Google Sheet URL:</label>
                         <input type="text" name="sheet_url" placeholder="Paste URL here..." required value="{{ sheet_url }}">
@@ -116,26 +132,32 @@
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const monthData = `{{ history | tojson | safe }}`;
+            const trendData = `{{ total_trend | tojson | safe }}`;
             let dataObj = {};
+            let trendObj = {};
 
             try {
                 dataObj = JSON.parse(monthData);
+                trendObj = JSON.parse(trendData);
             } catch(e) {
                 console.error("Failed to parse JSON:", e);
                 return;
             }
 
             const totalSpendingElement = document.getElementById('totalSpending');
-            const canvas = document.getElementById('SpendingChart');
-            if (!canvas) return;
-            const ctx = canvas.getContext('2d');
-            let chart;
+            const spendingCanvas = document.getElementById('SpendingChart');
+            const trendCanvas = document.getElementById('TotalTrendChart');
+            if (!spendingCanvas || !trendCanvas) return;
 
-            function updateChart() {
+            const spendingCtx = spendingCanvas.getContext('2d');
+            const trendCtx = trendCanvas.getContext('2d');
+            let spendingChart;
+            let trendChart;
+
+            function updateSpendingChart() {
                 const select = document.getElementById('monthSelector');
                 const selectedMonths = Array.from(select.selectedOptions).map(opt => opt.value);
 
-                // 1. Find all unique categories across all selected months
                 const allCategories = new Set();
                 selectedMonths.forEach(month => {
                     if (dataObj[month]) {
@@ -144,7 +166,6 @@
                 });
                 const labels = Array.from(allCategories);
 
-                // 2. Build dataset for each month
                 let totalSpending = 0;
                 const colors = [
                     'rgba(75, 192, 192, 0.7)', 'rgba(255, 99, 132, 0.7)', 
@@ -165,12 +186,10 @@
                     };
                 });
 
-                // 3. Update total spending display
                 totalSpendingElement.textContent = `$${totalSpending.toFixed(2)}`;
-                // 4. Render chart
-                if (chart) chart.destroy();
+                if (spendingChart) spendingChart.destroy();
 
-                chart = new Chart(ctx, {
+                spendingChart = new Chart(spendingCtx, {
                     type: 'bar',
                     data: {
                         labels: labels,
@@ -181,7 +200,8 @@
                         maintainAspectRatio: true,
                         scales: { 
                             x: { stacked: true },
-                            y: { stacked: true, beginAtZero: true } }
+                            y: { stacked: true, beginAtZero: true } 
+                        }
                     },
                     plugins: {
                         tooltip: {
@@ -192,12 +212,44 @@
                 });
             }
 
+            function renderTrendChart() {
+                const labels = Object.keys(trendObj);
+                const data = Object.values(trendObj);
+
+                if (trendChart) trendChart.destroy();
+
+                trendChart = new Chart(trendCtx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Total Spending Trend',
+                            data: data,
+                            borderColor: 'rgba(75, 192, 192, 1)',
+                            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                            fill: true,
+                            tension: 0.4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        scales: {
+                            y: { beginAtZero: true }
+                        }
+                    }
+                });
+            }
+
             const monthSelector = document.getElementById('monthSelector');
             if (monthSelector.options.length > 0) {
                 monthSelector.options[monthSelector.options.length - 1].selected = true;
             }
-            updateChart();
-            document.getElementById('updateChart').addEventListener('click', updateChart);
+
+            updateSpendingChart();
+            renderTrendChart();
+
+            document.getElementById('updateChart').addEventListener('click', updateSpendingChart);
         });
     </script>
 

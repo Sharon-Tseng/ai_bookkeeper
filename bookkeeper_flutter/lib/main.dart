@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
+import 'package:fl_chart/fl_chart.dart';
+import 'dart:convert';
 import 'dart:io';
-import 'package:http/http.dart' as http;
 import 'dart:typed_data';
+import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:logger/logger.dart';
 
@@ -19,7 +21,6 @@ class BookkeeperApp extends StatelessWidget {
       title: 'AI Bookkeeper',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        // 對應你的 style.css: .btn-primary 顏色
         primarySwatch: Colors.green,
         primaryColor: const Color(0xFF2ecc71),
         scaffoldBackgroundColor: Colors.white,
@@ -31,7 +32,7 @@ class BookkeeperApp extends StatelessWidget {
 }
 
 // =========================================
-// 1. WELCOME PAGE (對應 welcome.html)
+// 1. 歡迎頁面
 // =========================================
 class WelcomePage extends StatelessWidget {
   const WelcomePage({super.key});
@@ -42,7 +43,6 @@ class WelcomePage extends StatelessWidget {
       body: Container(
         width: double.infinity,
         height: double.infinity,
-        // 對應你的 style.css: .welcome-page 的漸層
         decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
@@ -54,7 +54,6 @@ class WelcomePage extends StatelessWidget {
           child: Container(
             margin: const EdgeInsets.symmetric(horizontal: 30),
             padding: const EdgeInsets.all(40),
-            // 對應 .welcome-container 的毛玻璃/半透明感
             decoration: BoxDecoration(
               color: Colors.white.withAlpha(25),
               borderRadius: BorderRadius.circular(20),
@@ -62,21 +61,9 @@ class WelcomePage extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text(
-                  "Welcome to AI Bookkeeper!",
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+                const Text("AI Bookkeeper", style: TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 20),
-                const Text(
-                  "Your intelligent assistant for managing your financial records with ease.",
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.white70, fontSize: 16),
-                ),
+                const Text("您的智慧財務管理助手", textAlign: TextAlign.center, style: TextStyle(color: Colors.white70, fontSize: 18)),
                 const SizedBox(height: 40),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
@@ -84,10 +71,8 @@ class WelcomePage extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 15),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                   ),
-                  onPressed: () {
-                    Navigator.push(context, MaterialPageRoute(builder: (context) => const MainAppPage()));
-                  },
-                  child: const Text("Get Started", style: TextStyle(fontSize: 18, color: Colors.white)),
+                  onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const MainAppPage())),
+                  child: const Text("立即開始", style: TextStyle(fontSize: 20, color: Colors.white)),
                 ),
               ],
             ),
@@ -99,7 +84,7 @@ class WelcomePage extends StatelessWidget {
 }
 
 // =========================================
-// 2. MAIN APP PAGE (導覽列 + Add Record)
+// 2. 主頁面 (包含 Add Record 與 History)
 // =========================================
 class MainAppPage extends StatefulWidget {
   const MainAppPage({super.key});
@@ -112,56 +97,45 @@ class _MainAppPageState extends State<MainAppPage> {
   int _selectedIndex = 0;
   final TextEditingController _urlController = TextEditingController();
   File? _image;
-  Uint8List? _webImage; // For web
+  Uint8List? _webImage;
   bool _isLoading = false;
+  final Logger _logger = Logger();
 
-  // 拍照功能
   Future<void> _pickImage() async {
     final picker = ImagePicker();
     final pickedFile = await picker.pickImage(source: ImageSource.camera);
     if (pickedFile != null) {
       if (kIsWeb) {
-        // For web, use bytes
         final bytes = await pickedFile.readAsBytes();
-        if (mounted) {
-          setState(() {
-            _webImage = bytes;
-          });
-        }
+        setState(() { _webImage = bytes; _image = null; });
       } else {
-        // For mobile/desktop, use File
-        if (mounted) {
-          setState(() {
-            _image = File(pickedFile.path);
-          });
-        }
+        setState(() { _image = File(pickedFile.path); _webImage = null; });
       }
     }
   }
 
-  final Logger _logger = Logger();
-
-  // 對應原本 app.py 的 upload_receipt 邏輯
   Future<void> _uploadData() async {
-    if (_image == null || _urlController.text.isEmpty) return;
-
+    final bool hasImage = kIsWeb ? (_webImage != null) : (_image != null);
+    if (!hasImage || _urlController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("請提供收據照片與網址")));
+      return;
+    }
     setState(() => _isLoading = true);
-
     try {
-      // 注意：手機模擬器連線電腦後端通常使用 10.0.0.2 或電腦 IP
-      var request = http.MultipartRequest(
-        'POST', 
-        Uri.parse('http://10.0.2.2:5000/api/upload_receipt')
-      );
+      String apiUrl = kIsWeb ? 'http://127.0.0.1:5000/api/upload_receipt' : 'http://10.0.2.2:5000/api/upload_receipt';
+      var request = http.MultipartRequest('POST', Uri.parse(apiUrl));
       request.fields['sheet_url'] = _urlController.text;
-      request.files.add(await http.MultipartFile.fromPath('receipt', _image!.path));
-
+      if (kIsWeb) {
+        request.files.add(http.MultipartFile.fromBytes('receipt', _webImage!, filename: 'receipt.png'));
+      } else {
+        request.files.add(await http.MultipartFile.fromPath('receipt', _image!.path));
+      }
       var response = await request.send();
       if (response.statusCode == 200) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Success!")));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("上傳成功！")));
       }
     } catch (e) {
-      _logger.e("Error uploading data", error: e);
+      _logger.e("Upload error: $e");
     } finally {
       setState(() => _isLoading = false);
     }
@@ -170,72 +144,257 @@ class _MainAppPageState extends State<MainAppPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("AI Bookkeeper"),
-        backgroundColor: const Color(0xFFa3b8d3), // 對應 .top-nav
-      ),
-      body: _selectedIndex == 0 ? _buildAddRecordView() : _buildHistoryView(),
+      appBar: AppBar(title: const Text("AI Bookkeeper"), backgroundColor: const Color(0xFFa3b8d3)),
+      body: _selectedIndex == 0 ? _buildAddRecordView() : HistoryView(sheetUrl: _urlController.text),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         onTap: (index) => setState(() => _selectedIndex = index),
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.add_a_photo), label: "Add Record"),
-          BottomNavigationBarItem(icon: Icon(Icons.history), label: "History"),
+          BottomNavigationBarItem(icon: Icon(Icons.add_a_photo), label: "新增紀錄"),
+          BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: "歷史分析"),
         ],
       ),
     );
   }
 
-  // 建立 Add Record 畫面 (對應 add_record.html)
   Widget _buildAddRecordView() {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(24),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text("Step 1: Configuration", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 10),
-          TextField(
-            controller: _urlController,
-            decoration: const InputDecoration(
-              labelText: "Google Sheet URL",
-              border: OutlineInputBorder(),
-              hintText: "Paste your spreadsheet URL here",
-            ),
+          TextField(controller: _urlController, decoration: const InputDecoration(labelText: "Google Sheet 網址", border: OutlineInputBorder())),
+          const SizedBox(height: 30),
+          Container(
+            height: 250, width: double.infinity,
+            decoration: BoxDecoration(border: Border.all(color: Colors.grey), borderRadius: BorderRadius.circular(10)),
+            child: kIsWeb ? (_webImage == null ? const Center(child: Text("未選取照片")) : Image.memory(_webImage!))
+                           : (_image == null ? const Center(child: Text("未選取照片")) : Image.file(_image!)),
           ),
           const SizedBox(height: 30),
-          const Text("Step 2: Upload Receipt", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 10),
-          Center(
-            child: kIsWeb
-                ? (_webImage == null
-                    ? const Text("No image selected.")
-                    : Image.memory(_webImage!, height: 200))
-                : (_image == null
-                    ? const Text("No image selected.")
-                    : Image.file(_image!, height: 200)),
-          ),
-          const SizedBox(height: 10),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              ElevatedButton.icon(onPressed: _pickImage, icon: const Icon(Icons.camera_alt), label: const Text("Camera")),
-              ElevatedButton.icon(
-                onPressed: _isLoading ? null : _uploadData, 
-                icon: _isLoading ? const CircularProgressIndicator(color: Colors.white) : const Icon(Icons.cloud_upload), 
-                label: const Text("Process")
-              ),
+              ElevatedButton.icon(onPressed: _pickImage, icon: const Icon(Icons.camera_alt), label: const Text("拍照", style: TextStyle(fontSize: 18))),
+              ElevatedButton.icon(onPressed: _isLoading ? null : _uploadData, icon: const Icon(Icons.cloud_upload), label: const Text("上傳處理", style: TextStyle(fontSize: 18))),
             ],
           ),
         ],
       ),
     );
   }
+}
 
-  // 建立 History 畫面 (對應 view_history.html)
-  Widget _buildHistoryView() {
-    return const Center(
-      child: Text("History & Charts will be displayed here\n(Use fl_chart package for visualization)"),
+// =========================================
+// 3. 歷史分析頁面 (修正圖表遮擋問題)
+// =========================================
+class HistoryView extends StatefulWidget {
+  final String sheetUrl;
+  const HistoryView({super.key, required this.sheetUrl});
+
+  @override
+  State<HistoryView> createState() => _HistoryViewState();
+}
+
+class _HistoryViewState extends State<HistoryView> {
+  Map<String, dynamic>? _historyData;
+  List<String> _selectedMonths = [];
+  bool _isLoading = false;
+
+  final TextEditingController _yearCtrl = TextEditingController(text: DateTime.now().year.toString());
+  final TextEditingController _monthCtrl = TextEditingController(text: DateTime.now().month.toString().padLeft(2, '0'));
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.sheetUrl.isNotEmpty) _fetchHistory();
+  }
+
+  Future<void> _fetchHistory() async {
+    setState(() => _isLoading = true);
+    try {
+      final String baseUrl = kIsWeb ? 'http://127.0.0.1:5000' : 'http://10.0.2.2:5000';
+      final response = await http.get(Uri.parse('$baseUrl/api/history?sheet_url=${Uri.encodeComponent(widget.sheetUrl)}'));
+      if (response.statusCode == 200) {
+        setState(() { 
+          _historyData = json.decode(response.body); 
+          List<String> all = List<String>.from(_historyData!['months']);
+          if (all.isNotEmpty && _selectedMonths.isEmpty) _selectedMonths = [all.last];
+        });
+      }
+    } catch (e) {
+      debugPrint("Fetch error: $e");
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.sheetUrl.isEmpty) return const Center(child: Text("請先在第一頁輸入網址", style: TextStyle(fontSize: 18)));
+    if (_isLoading) return const Center(child: CircularProgressIndicator());
+    if (_historyData == null) return const Center(child: Text("獲取數據失敗"));
+
+    Set<String> categorySet = {};
+    for (var m in _selectedMonths) {
+      if (_historyData!['data'][m] != null) categorySet.addAll((_historyData!['data'][m] as Map).keys.cast<String>());
+    }
+    List<String> categoryList = categorySet.toList();
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text("新增對比月份", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 15),
+          Row(
+            children: [
+              Expanded(child: TextField(controller: _yearCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: "年份", border: OutlineInputBorder()))),
+              const SizedBox(width: 10),
+              Expanded(child: TextField(controller: _monthCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: "月份", border: OutlineInputBorder()))),
+              const SizedBox(width: 10),
+              ElevatedButton(onPressed: () {
+                String m = "${_yearCtrl.text}-${_monthCtrl.text.padLeft(2, '0')}";
+                if (!_selectedMonths.contains(m)) setState(() => _selectedMonths.add(m));
+              }, child: const Icon(Icons.add)),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Wrap(spacing: 8, children: _selectedMonths.map((m) => InputChip(label: Text(m), onDeleted: () => setState(() => _selectedMonths.remove(m)))).toList()),
+          const SizedBox(height: 40),
+
+          if (_selectedMonths.isNotEmpty) ...[
+            const Text("分類消費堆疊對比", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 25),
+            _buildChart(categoryList),
+            const SizedBox(height: 60), // 增加間距避免表格擠上來
+            const Text("詳細報表", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 15),
+            _buildDataTable(categoryList),
+          ]
+        ],
+      ),
     );
+  }
+
+  Widget _buildChart(List<String> categories) {
+    // 計算所有顯示柱子的最大高度，手動設定 maxY 以移除左上角那個奇怪的數字
+    double maxVal = 0;
+    for (var cat in categories) {
+      double sum = _selectedMonths.fold(0.0, (s, m) => s + (_historyData!['data'][m]?[cat] ?? 0).toDouble());
+      if (sum > maxVal) maxVal = sum;
+    }
+
+    return SizedBox(
+      height: 450, // 加高容器
+      child: BarChart(
+        BarChartData(
+          alignment: BarChartAlignment.spaceAround,
+          maxY: maxVal == 0 ? 100 : maxVal * 1.1, // 自動動態計算 maxY，多給 10% 空間
+          titlesData: FlTitlesData(
+            bottomTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 60, // 增加底部預留空間給文字
+                getTitlesWidget: (v, meta) {
+                  if (v.toInt() >= categories.length) return const SizedBox();
+                  return SideTitleWidget(
+                    meta: meta,
+                    space: 12,
+                    child: Transform.rotate(
+                      angle: -0.5, // 旋轉文字避免遮擋
+                      child: Text(
+                        categories[v.toInt()],
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            leftTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: true, reservedSize: 45),
+            ),
+            topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)), // 徹底關掉頂部標題，去掉左上角數字
+            rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          ),
+          gridData: const FlGridData(show: true, drawVerticalLine: false),
+          borderData: FlBorderData(show: false),
+          barGroups: categories.asMap().entries.map((e) {
+            double totalY = _selectedMonths.fold(0.0, (sum, m) => sum + (_historyData!['data'][m]?[e.value] ?? 0).toDouble());
+            return BarChartGroupData(
+              x: e.key,
+              barRods: [
+                BarChartRodData(
+                  toY: totalY,
+                  width: 32,
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
+                  rodStackItems: _buildRodStacks(e.value),
+                )
+              ],
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+
+  List<BarChartRodStackItem> _buildRodStacks(String cat) {
+    List<BarChartRodStackItem> items = [];
+    double currentHeight = 0;
+    for (int i = 0; i < _selectedMonths.length; i++) {
+      double val = (_historyData!['data'][_selectedMonths[i]]?[cat] ?? 0).toDouble();
+      if (val > 0) {
+        items.add(BarChartRodStackItem(currentHeight, currentHeight + val, Colors.primaries[i % Colors.primaries.length].withOpacity(0.85)));
+        currentHeight += val;
+      }
+    }
+    return items;
+  }
+
+  Widget _buildDataTable(List<String> categories) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: DataTable(
+        headingRowColor: MaterialStateProperty.all(Colors.blueGrey[50]),
+        columns: [
+          const DataColumn(label: Text('分類', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold))),
+          ..._selectedMonths.map((m) => DataColumn(label: Text(m, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)))),
+          const DataColumn(label: Text('小計', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold))),
+        ],
+        rows: [
+          ...categories.map((cat) {
+            double rowTotal = 0;
+            return DataRow(cells: [
+              DataCell(Text(cat, style: const TextStyle(fontSize: 16))),
+              ..._selectedMonths.map((m) {
+                double v = (_historyData!['data'][m]?[cat] ?? 0).toDouble();
+                rowTotal += v;
+                return DataCell(Text('\$${v.toStringAsFixed(0)}', style: const TextStyle(fontSize: 16)));
+              }),
+              DataCell(Text('\$${rowTotal.toStringAsFixed(0)}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.blue))),
+            ]);
+          }),
+          DataRow(cells: [
+            const DataCell(Text('總計', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold))),
+            ..._selectedMonths.map((m) {
+              double colTotal = (_historyData!['data'][m] as Map).values.fold(0.0, (s, v) => s + v);
+              return DataCell(Text('\$${colTotal.toStringAsFixed(0)}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)));
+            }),
+            DataCell(Text('\$${_getGrandTotal().toStringAsFixed(0)}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.red))),
+          ]),
+        ],
+      ),
+    );
+  }
+
+  double _getGrandTotal() {
+    double grand = 0;
+    for (var m in _selectedMonths) {
+      if (_historyData!['data'][m] != null) {
+        grand += (_historyData!['data'][m] as Map).values.fold(0.0, (s, v) => s + v);
+      }
+    }
+    return grand;
   }
 }

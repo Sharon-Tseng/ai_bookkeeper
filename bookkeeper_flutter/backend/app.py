@@ -1,152 +1,89 @@
 import os
-from flask import Flask, jsonify, render_template, request, redirect, url_for
-import PIL.Image as Image
 import re
 import sqlite3
-from bookkeeper_flutter.backend.agent_tools import load_raw_expense_data
-from bookkeeper_flutter.backend.agents import AccountAgents
+import json
+import PIL.Image as Image
+from flask import Flask, jsonify, render_template, request, redirect, url_for
+from flask_cors import CORS
+from agent_tools import load_raw_expense_data
+from agents import AccountAgents
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-db_path = os.path.join(BASE_DIR, 'bookkeeper.db')
+app = Flask(__name__)
+CORS(app)
+
+# --- 資料庫與工具邏輯 ---
+def get_db_conn():
+    path = '/tmp/bookkeeper.db' if os.environ.get('VERCEL') else 'bookkeeper.db'
+    return sqlite3.connect(path)
+
+def init_db():
+    with get_db_conn() as conn:
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS user_sheets(
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT NOT NULL,
+                sheet_url TEXT NOT NULL,
+                UNIQUE(username, sheet_url)
+            )''')
 
 def get_spreadsheet_id(url):
     pattern = r"/d/([a-zA-Z0-9-_]+)"
     match = re.search(pattern, url)
     return match.group(1) if match else None
 
-def init_db():
-    db_path = '/tmp/bookkeeper.db' if os.environ.get('VERCEL') else 'bookkeeper.db'
-    conn = sqlite3.connect(db_path)
-    cursor = conn.cursor()
-    # Store user-sheet relationships
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS user_sheets(
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT NOT NULL,
-            sheet_url TEXT NOT NULL,
-            UNIQUE(username, sheet_url)
-        )''')
-    conn.commit()
-    conn.close()
-init_db()
-
 def save_user_sheet(username, sheet_url):
-    db_path = '/tmp/bookkeeper.db' if os.environ.get('VERCEL') else 'bookkeeper.db'
-    conn = sqlite3.connect(db_path)
-    cursor = conn.cursor()
-    try:
-        cursor.execute('''
-            INSERT INTO user_sheets (username, sheet_url)
-            VALUES (?, ?)
-        ''', (username, sheet_url))
-        conn.commit()
-    except sqlite3.IntegrityError:
-        pass
-    conn.close()
+    with get_db_conn() as conn:
+        try:
+            conn.execute('INSERT INTO user_sheets (username, sheet_url) VALUES (?, ?)', (username, sheet_url))
+        except sqlite3.IntegrityError:
+            pass
 
 def get_user_sheets(username):
-    db_path = '/tmp/bookkeeper.db' if os.environ.get('VERCEL') else 'bookkeeper.db'
-    conn = sqlite3.connect(db_path)
-    cursor = conn.cursor()
-    cursor.execute('SELECT DISTINCT sheet_url FROM user_sheets WHERE username = ?', (username,))
-    urls = [row[0] for row in cursor.fetchall()]
-    conn.close()
-    return urls
-    
-# Flask application setup
-app = Flask(__name__)
+    with get_db_conn() as conn:
+        cursor = conn.execute('SELECT DISTINCT sheet_url FROM user_sheets WHERE username = ?', (username,))
+        return [row[0] for row in cursor.fetchall()]
 
-@app.route('/')
-def welcome():
-    return render_template('welcome.html', result=None, sheet_url="")
+# 初始化資料庫
+init_db()
 
-@app.route('/app', methods=['GET', 'POST'])
-def index():
-    result = None
-    sheet_url = request.args.get('sheet_url', '')
-    username= 'default_user'  
-    saved_sheets = get_user_sheets(username)
-
-    if request.method == 'POST':
-        sheet_url = request.form.get('sheet_url')
-        file = request.files.get('receipt')
-        
-        if sheet_url:
-            save_user_sheet(username, sheet_url)
-            saved_sheets = get_user_sheets(username) 
-
-        spreadsheet_id = get_spreadsheet_id(sheet_url)
-        if file and spreadsheet_id:
-            img = Image.open(file.stream)
-            try:
-                result = AccountAgents.run_bookkeeper(img, spreadsheet_id)
-            except Exception as e:
-                result = f"Error: {str(e)}"
-        else:
-            result = "Error: Invalid URL or No File."
-
-    return render_template('add_record.html', result=result, sheet_url=sheet_url, saved_sheets=saved_sheets)
+# --- 路由邏輯 ---
 
 @app.route('/api/upload_receipt', methods=['POST'])
 def upload_receipt_api():
-    """專門給 Flutter App 呼叫的 API"""
+    """Flutter 專用：上傳收據並寫入試算表"""
     try:
         sheet_url = request.form.get('sheet_url')
         file = request.files.get('receipt')
-        username = 'default_user' 
-
         if not sheet_url or not file:
-            return jsonify({"error": "Missing sheet_url or file"}), 400
+            return jsonify({"success": False, "error": "缺少網址或檔案"}), 400
 
         spreadsheet_id = get_spreadsheet_id(sheet_url)
+        save_user_sheet('default_user', sheet_url)
+        
         img = Image.open(file.stream)
-        
         result = AccountAgents.run_bookkeeper(img, spreadsheet_id) 
-        
         return jsonify({"success": True, "message": result})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
-@app.route('/clear')
-def clear_all():
-    return redirect(url_for('index'))
-
-@app.route('/view_history', methods=['GET', 'POST'])
-def view_history():
-    username = request.args.get('username', 'default_user') 
-    saved_sheets = get_user_sheets(username)
-    
-    sheet_url = ""
-    if request.method == 'POST':
-        sheet_url = request.form.get('sheet_url')
-        if sheet_url:
-            save_user_sheet(username, sheet_url)
-            saved_sheets = get_user_sheets(username)
-    else:
-        sheet_url = request.args.get('sheet_url', '')
-
+@app.route('/api/history', methods=['GET'])
+def get_history_api():
+    """Flutter 專用：獲取歷史數據以供圖表顯示"""
+    sheet_url = request.args.get('sheet_url')
     if not sheet_url:
-        return render_template('view_history.html', history={}, sheet_url="", saved_sheets=saved_sheets, total_trend={})
-
+        return jsonify({"error": "缺少 sheet_url"}), 400
+        
     spreadsheet_id = get_spreadsheet_id(sheet_url)
     if not spreadsheet_id:
-        return "Error: Invalid Google Sheet URL."
+        return jsonify({"error": "無效的網址"}), 400
 
     raw_data = load_raw_expense_data(spreadsheet_id)
-
-    # Get monthly data for chart
-    months = raw_data.get("months", [])
+    # 計算總趨勢
     data = raw_data.get("data", {})
-
-    # Calculate total spending trend
     total_trend = {month: sum(categories.values()) for month, categories in data.items()}
-
-    # Transform data to JSON format for charting
-    return render_template('view_history.html', history=data, sheet_url=sheet_url, saved_sheets=saved_sheets, total_trend=total_trend)
-
-@app.route('/clear_history')
-def clear_history():
-    return redirect(url_for('view_history'))
+    
+    raw_data["total_trend"] = total_trend
+    return jsonify(raw_data)
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
