@@ -1,25 +1,37 @@
 import os
 import base64
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langgraph.prebuilt import create_react_agent
+from langchain.agents import create_agent
 from agent_tools import write_to_sheets
 from io import BytesIO
 from dotenv import load_dotenv
+from datetime import datetime
 
 # Load environment variables from .env file
 load_dotenv()
 # Import API key
 os.environ["GOOGLE_API_KEY"] = os.getenv("GOOGLE_API_KEY")
 
-gemini_llm = ChatGoogleGenerativeAI(model="gemini-flash-latest", temperature=0)
-bookkeeper_graph_agent = create_react_agent(gemini_llm, [write_to_sheets])
+gemini_llm = ChatGoogleGenerativeAI(
+    model="gemini-2.5-flash", 
+    temperature=0,
+    include_thoughts = True)
+
+bookkeeper_graph_agent = create_agent(
+    gemini_llm, 
+    tools = [write_to_sheets],
+    system_prompt="你是一個專業的記帳助手。請分析圖片並提取日期、項目、金額、分類。"
+)
 
 class AccountAgents:
     @staticmethod
     def run_bookkeeper(image_data, spreadsheet_id):
         buffered = BytesIO()
         image_data.save(buffered, format="PNG")
-        image_data = base64.b64encode(buffered.getvalue()).decode("utf-8")
+        base64_image = base64.b64encode(buffered.getvalue()).decode("utf-8")
+
+        # create unique thought_signature for sessions
+        current_sig = f"bookkeeper-{spreadsheet_id}-{datetime.now().strftime('%Y%m%d%H%M%S')}"
 
         inputs = {
             "messages": [
@@ -38,12 +50,17 @@ class AccountAgents:
                    如果無法從圖片提取任何文字資訊，請回覆「無法識別圖片中的文字資訊，請提供清晰的收據圖片。」。
                    """},
                   {"type": "image_url", 
-                   "image_url": {"url": f"data:image/png;base64,{image_data}"}
+                   "image_url": {"url": f"data:image/png;base64,{base64_image}"}
                   }])
             ]
         }
 
-        config = {"configurable": {"SPREADSHEET_ID": spreadsheet_id}}
+        config = {
+            "configurable": {"SPREADSHEET_ID": spreadsheet_id}
+        }
 
-        response = bookkeeper_graph_agent.invoke(inputs, config=config)
-        return response["messages"][-1].content
+        try:
+            response = bookkeeper_graph_agent.invoke(inputs, config=config)
+            return response["messages"][-1].content 
+        except Exception as e:
+            return f"Error during agent execution: {str(e)}"

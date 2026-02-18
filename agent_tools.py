@@ -54,18 +54,14 @@ def write_to_sheets(data_json: str, config: RunnableConfig) -> str:
     輸入應該是JSON 字符串，格式如下：{"date": "2024-01-01", "place": "example place", "item": "example item", "spending amount": 123.45, "category": "example category"}
     """
     configurable = config.get("configurable", {})
-    spreadsheet_id = configurable.get("SPREADSHEET_ID", None)
-    thought_signature = config.get("thought_signature", None)  # Extract thought_signature
-
+    spreadsheet_id = config.get("configurable", {}).get("SPREADSHEET_ID") 
     creds_str = os.getenv("GOOGLE_APP_CREDENTIALS", None)
 
     if not spreadsheet_id:
         return "SPREADSHEET_ID is not configured."
     if not creds_str:
         return "GOOGLE_APP_CREDENTIALS is not configured."
-    if not thought_signature:
-        return "thought_signature is not provided."
-
+    
     try:
         # parse json credentials
         info = json.loads(creds_str)
