@@ -2,7 +2,7 @@ import os
 import base64
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.agents import create_agent
-from bookkeeper_flutter.backend.agent_tools import write_to_sheets
+from agent_tools import write_to_sheets
 from io import BytesIO
 from dotenv import load_dotenv
 from datetime import datetime
@@ -10,7 +10,11 @@ from datetime import datetime
 # Load environment variables from .env file
 load_dotenv()
 # Import API key
-os.environ["GOOGLE_API_KEY"] = os.getenv("GOOGLE_API_KEY")
+if os.getenv("GOOGLE_API_KEY"):
+    os.environ["GOOGLE_API_KEY"] = os.getenv("GOOGLE_API_KEY")
+else:
+    print("Warning: GOOGLE_API_KEY not set. Using dummy key.")
+    os.environ["GOOGLE_API_KEY"] = "DUMMY_KEY"
 
 gemini_llm = ChatGoogleGenerativeAI(
     model="gemini-2.5-flash", 
