@@ -124,7 +124,7 @@ class _MainAppPageState extends State<MainAppPage> {
     try {
       String apiUrl = kIsWeb ? 'http://127.0.0.1:5000/api/upload_receipt' : 'http://10.0.2.2:5000/api/upload_receipt';
       var request = http.MultipartRequest('POST', Uri.parse(apiUrl));
-      request.fields['sheet_url'] = _urlController.text;
+      request.fields['sheet_url'] = _urlController.text; // Ensure sheet_url is sent
       if (kIsWeb) {
         request.files.add(http.MultipartFile.fromBytes('receipt', _webImage!, filename: 'receipt.png'));
       } else {
@@ -133,6 +133,9 @@ class _MainAppPageState extends State<MainAppPage> {
       var response = await request.send();
       if (response.statusCode == 200) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("上傳成功！")));
+      } else {
+        final respStr = await response.stream.bytesToString();
+        debugPrint("Error: $respStr");
       }
     } catch (e) {
       _logger.e("Upload error: $e");
@@ -220,6 +223,8 @@ class _HistoryViewState extends State<HistoryView> {
           List<String> all = List<String>.from(_historyData!['months']);
           if (all.isNotEmpty && _selectedMonths.isEmpty) _selectedMonths = [all.last];
         });
+      } else {
+        debugPrint("Error: ${response.body}");
       }
     } catch (e) {
       debugPrint("Fetch error: $e");
@@ -359,7 +364,7 @@ class _HistoryViewState extends State<HistoryView> {
         headingRowColor: MaterialStateProperty.all(Colors.blueGrey[50]),
         columns: [
           const DataColumn(label: Text('分類', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold))),
-          ..._selectedMonths.map((m) => DataColumn(label: Text(m, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)))),
+          ..._selectedMonths.map((m) => DataColumn(label: Text(m, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)))).toList(),
           const DataColumn(label: Text('小計', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold))),
         ],
         rows: [
