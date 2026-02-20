@@ -103,13 +103,30 @@ class _MainAppPageState extends State<MainAppPage> {
 
   Future<void> _pickImage() async {
     final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.camera);
-    if (pickedFile != null) {
-      if (kIsWeb) {
-        final bytes = await pickedFile.readAsBytes();
-        setState(() { _webImage = bytes; _image = null; });
-      } else {
-        setState(() { _image = File(pickedFile.path); _webImage = null; });
+    // Default to camera on mobile/web, gallery on desktop
+    ImageSource source = ImageSource.camera;
+    if (!kIsWeb && (Platform.isLinux || Platform.isWindows || Platform.isMacOS)) {
+      source = ImageSource.gallery;
+    }
+    
+    try {
+      final pickedFile = await picker.pickImage(source: source);
+      if (!mounted) return;
+      if (pickedFile != null) {
+        if (kIsWeb) {
+          final bytes = await pickedFile.readAsBytes();
+          if (!mounted) return;
+          setState(() { _webImage = bytes; _image = null; });
+        } else {
+          setState(() { _image = File(pickedFile.path); _webImage = null; });
+        }
+      }
+    } catch (e) {
+      _logger.e("Error picking image: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("無法選取圖片: $e")),
+        );
       }
     }
   }
@@ -122,7 +139,11 @@ class _MainAppPageState extends State<MainAppPage> {
     }
     setState(() => _isLoading = true);
     try {
-      String apiUrl = kIsWeb ? 'http://127.0.0.1:5000/api/upload_receipt' : 'http://10.0.2.2:5000/api/upload_receipt';
+      String baseUrl = 'http://127.0.0.1:5000';
+      if (!kIsWeb && Platform.isAndroid) {
+        baseUrl = 'http://10.0.2.2:5000';
+      }
+      String apiUrl = '$baseUrl/api/upload_receipt';
       var request = http.MultipartRequest('POST', Uri.parse(apiUrl));
       request.fields['sheet_url'] = _urlController.text; // Ensure sheet_url is sent
       if (kIsWeb) {
@@ -131,6 +152,7 @@ class _MainAppPageState extends State<MainAppPage> {
         request.files.add(await http.MultipartFile.fromPath('receipt', _image!.path));
       }
       var response = await request.send();
+      if (!mounted) return;
       if (response.statusCode == 200) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("上傳成功！")));
       } else {
@@ -140,7 +162,9 @@ class _MainAppPageState extends State<MainAppPage> {
     } catch (e) {
       _logger.e("Upload error: $e");
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -215,8 +239,14 @@ class _HistoryViewState extends State<HistoryView> {
   Future<void> _fetchHistory() async {
     setState(() => _isLoading = true);
     try {
-      final String baseUrl = kIsWeb ? 'http://127.0.0.1:5000' : 'http://10.0.2.2:5000';
+      String baseUrl = 'http://127.0.0.1:5000';
+      if (!kIsWeb && Platform.isAndroid) {
+        baseUrl = 'http://10.0.2.2:5000';
+      }
       final response = await http.get(Uri.parse('$baseUrl/api/history?sheet_url=${Uri.encodeComponent(widget.sheetUrl)}'));
+      
+      if (!mounted) return;
+      
       if (response.statusCode == 200) {
         setState(() { 
           _historyData = json.decode(response.body); 
@@ -229,7 +259,9 @@ class _HistoryViewState extends State<HistoryView> {
     } catch (e) {
       debugPrint("Fetch error: $e");
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -383,9 +415,13 @@ class _HistoryViewState extends State<HistoryView> {
           DataRow(cells: [
             const DataCell(Text('總計', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold))),
             ..._selectedMonths.map((m) {
-              double colTotal = (_historyData!['data'][m] as Map).values.fold(0.0, (s, v) => s + v);
-              return DataCell(Text('\$${colTotal.toStringAsFixed(0)}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)));
-            }),
+            final monthData = _historyData!['data'][m];
+            double colTotal = 0;
+            if (monthData is Map) {
+               colTotal = monthData.values.fold(0.0, (s, v) => s + v);
+            }
+            return DataCell(Text('\$${colTotal.toStringAsFixed(0)}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)));
+          }),
             DataCell(Text('\$${_getGrandTotal().toStringAsFixed(0)}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.red))),
           ]),
         ],
@@ -396,8 +432,9 @@ class _HistoryViewState extends State<HistoryView> {
   double _getGrandTotal() {
     double grand = 0;
     for (var m in _selectedMonths) {
-      if (_historyData!['data'][m] != null) {
-        grand += (_historyData!['data'][m] as Map).values.fold(0.0, (s, v) => s + v);
+      final monthData = _historyData!['data'][m];
+      if (monthData is Map) {
+        grand += monthData.values.fold(0.0, (s, v) => s + v);
       }
     }
     return grand;
