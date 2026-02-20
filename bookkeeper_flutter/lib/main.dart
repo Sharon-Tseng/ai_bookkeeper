@@ -7,6 +7,8 @@ import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:logger/logger.dart';
+import 'services/ai_service.dart';
+import 'services/sheets_service.dart';
 
 void main() {
   runApp(const BookkeeperApp());
@@ -139,28 +141,36 @@ class _MainAppPageState extends State<MainAppPage> {
     }
     setState(() => _isLoading = true);
     try {
-      String baseUrl = 'http://127.0.0.1:5000';
-      if (!kIsWeb && Platform.isAndroid) {
-        baseUrl = 'http://10.0.2.2:5000';
+      // 1. Get Spreadsheet ID
+      final sheetsService = SheetsService();
+      final spreadsheetId = sheetsService.getSpreadsheetId(_urlController.text);
+      if (spreadsheetId == null) {
+        throw Exception("Invalid Google Sheet URL");
       }
-      String apiUrl = '$baseUrl/api/upload_receipt';
-      var request = http.MultipartRequest('POST', Uri.parse(apiUrl));
-      request.fields['sheet_url'] = _urlController.text; // Ensure sheet_url is sent
+
+      // 2. Prepare Image Bytes
+      Uint8List imageBytes;
       if (kIsWeb) {
-        request.files.add(http.MultipartFile.fromBytes('receipt', _webImage!, filename: 'receipt.png'));
+        imageBytes = _webImage!;
       } else {
-        request.files.add(await http.MultipartFile.fromPath('receipt', _image!.path));
+        imageBytes = await _image!.readAsBytes();
       }
-      var response = await request.send();
+
+      // 3. AI Analysis
+      final aiService = AIService();
+      final data = await aiService.analyzeReceipt(imageBytes);
+      _logger.d("AI Analysis Result: $data");
+
+      // 4. Write to Sheets
+      await sheetsService.writeToSheet(spreadsheetId, data);
+
       if (!mounted) return;
-      if (response.statusCode == 200) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("上傳成功！")));
-      } else {
-        final respStr = await response.stream.bytesToString();
-        debugPrint("Error: $respStr");
-      }
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("上傳成功！")));
     } catch (e) {
       _logger.e("Upload error: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("發生錯誤: $e")));
+      }
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -239,25 +249,28 @@ class _HistoryViewState extends State<HistoryView> {
   Future<void> _fetchHistory() async {
     setState(() => _isLoading = true);
     try {
-      String baseUrl = 'http://127.0.0.1:5000';
-      if (!kIsWeb && Platform.isAndroid) {
-        baseUrl = 'http://10.0.2.2:5000';
+      final sheetsService = SheetsService();
+      final spreadsheetId = sheetsService.getSpreadsheetId(widget.sheetUrl);
+      
+      if (spreadsheetId == null) {
+        throw Exception("Invalid Sheet URL");
       }
-      final response = await http.get(Uri.parse('$baseUrl/api/history?sheet_url=${Uri.encodeComponent(widget.sheetUrl)}'));
+
+      final data = await sheetsService.loadRawExpenseData(spreadsheetId);
       
       if (!mounted) return;
       
-      if (response.statusCode == 200) {
-        setState(() { 
-          _historyData = json.decode(response.body); 
-          List<String> all = List<String>.from(_historyData!['months']);
-          if (all.isNotEmpty && _selectedMonths.isEmpty) _selectedMonths = [all.last];
-        });
-      } else {
-        debugPrint("Error: ${response.body}");
-      }
+      setState(() { 
+        _historyData = data; 
+        List<String> all = List<String>.from(_historyData!['months']);
+        if (all.isNotEmpty && _selectedMonths.isEmpty) _selectedMonths = [all.last];
+      });
+
     } catch (e) {
       debugPrint("Fetch error: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("無法獲取歷史資料: $e")));
+      }
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
