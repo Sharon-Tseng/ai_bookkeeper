@@ -1,6 +1,5 @@
 {
   "version": 2,
-  "framework": "static",
   "buildCommand": "cd bookkeeper_flutter && git clone https://github.com/flutter/flutter.git -b stable --depth 1 && flutter/bin/flutter --version && flutter/bin/flutter pub get && flutter/bin/flutter build web",
   "outputDirectory": "bookkeeper_flutter/build/web"
 }
