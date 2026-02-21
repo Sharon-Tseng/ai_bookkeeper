@@ -34,7 +34,7 @@ migrate_working_dir/
 /coverage/
 
 # Local secrets
-lib/services/secrets.dart
+# lib/services/secrets.dart
 
 # Symbolication related
 app.*.symbols
